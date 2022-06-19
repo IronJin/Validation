@@ -11,6 +11,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -25,6 +27,14 @@ import java.util.Map;
 public class ValidationItemControllerV2 {
 
     private final ItemRepository itemRepository;
+    private final ItemValidator itemValidator;
+
+    //항상 검증기를 적용할 수 있음
+    //모든 메소드에 대해 먼저 실행됨
+    @InitBinder
+    public void init(WebDataBinder dataBinder) {
+        dataBinder.addValidators(itemValidator);
+    }
 
     @GetMapping
     public String items(Model model) {
@@ -154,7 +164,7 @@ public class ValidationItemControllerV2 {
         return "redirect:/validation/v2/items/{itemId}";
     }
 
-    @PostMapping("/add")
+    //@PostMapping("/add")
     public String addItemV4(@ModelAttribute Item item, BindingResult bindingResult, RedirectAttributes redirectAttributes, Model model) {
 
         log.info("objectName={}",bindingResult.getObjectName());
@@ -181,6 +191,47 @@ public class ValidationItemControllerV2 {
                 bindingResult.reject("totalPriceMin",new Object[]{10000, resultPrice},null);
             }
         }
+
+        //검증에 실패하면 다시 입력 폼으로
+        if(bindingResult.hasErrors()) {
+            log.info("errors={}",bindingResult);
+            return "validation/v2/addForm";
+        }
+
+        //여기서부터는 성공 로직이 될 것임
+        Item savedItem = itemRepository.save(item);
+        redirectAttributes.addAttribute("itemId", savedItem.getId());
+        redirectAttributes.addAttribute("status", true);
+        return "redirect:/validation/v2/items/{itemId}";
+    }
+
+    /**
+     * 내가 선호하는 방식은 이게 더 좋은거 같다는 생각이 든다.
+     */
+    //@PostMapping("/add")
+    public String addItemV5(@ModelAttribute Item item, BindingResult bindingResult, RedirectAttributes redirectAttributes, Model model) {
+
+        itemValidator.validate(item, bindingResult);
+
+        //검증에 실패하면 다시 입력 폼으로
+        if(bindingResult.hasErrors()) {
+            log.info("errors={}",bindingResult);
+            return "validation/v2/addForm";
+        }
+
+        //여기서부터는 성공 로직이 될 것임
+        Item savedItem = itemRepository.save(item);
+        redirectAttributes.addAttribute("itemId", savedItem.getId());
+        redirectAttributes.addAttribute("status", true);
+        return "redirect:/validation/v2/items/{itemId}";
+    }
+
+    /**
+     * @Validated 에서 supports 메소드가 사용되서 true 이면 호출이 되면서 검증기가 실행이 됨.
+     * 그 후에 BindingResult 에 담긴다.
+     */
+    @PostMapping("/add")
+    public String addItemV6(@Validated @ModelAttribute Item item, BindingResult bindingResult, RedirectAttributes redirectAttributes, Model model) {
 
         //검증에 실패하면 다시 입력 폼으로
         if(bindingResult.hasErrors()) {
