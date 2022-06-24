@@ -226,6 +226,7 @@ public class ValidationItemControllerV2 {
         return "redirect:/validation/v2/items/{itemId}";
     }
 
+
     /**
      * @Validated 에서 supports 메소드가 사용되서 true 이면 호출이 되면서 검증기가 실행이 됨.
      * 그 후에 BindingResult 에 담긴다.
